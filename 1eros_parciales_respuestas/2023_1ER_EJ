@@ -1,0 +1,159 @@
+#include "LPC17xx.h"
+
+typedef enum
+{
+    contar,
+    reset,
+    pausar,
+    contarRapido
+} Estado;
+
+volatile Estado estado = contar;
+volatile Estado estadoAnterior = contar;
+uint8_t seg[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x67};
+uint8_t index = 0;
+volatile uint32_t t = 0;
+
+void iniciarGPIO(void)
+{
+    //EINT0
+    LPC_PINCON -> PINSEL4 &= ~(3 << 20); //limpiar
+    LPC_PINCON -> PINSEL4 |= (1 << 20);
+    LPC_PINCON -> PINMODE4 &= ~(3 << 20); //PULL UP
+
+    //EINT1
+    LPC_PINCON -> PINSEL4 &= ~(3 << 22);
+    LPC_PINCON -> PINSEL4 |= (1 << 22);
+    LPC_PINCON -> PINMODE4 &= ~(3 << 22);
+
+    //EINT2
+    LPC_PINCON -> PINSEL4 &= ~(3 << 24);
+    LPC_PINCON -> PINSEL4 |= (1 << 24);
+    LPC_PINCON -> PINMODE4 &= ~(3 << 24);
+
+    //SALIDAS 7SEG
+    LPC_PINCON -> PINSEL0 &= ~0xFFFF;
+    LPC_GPIO0 -> FIODIR |= 0xFF;
+}
+
+void iniciarSysTick(void)
+{
+    SysTick -> LOAD = (16000000/1000) - 1; //1ms
+    SysTick -> VAL = 0;
+    SysTick -> CTRL |= 7;
+}
+
+void iniciarEINT(void)
+{
+    NVIC_EnableIRQ(EINT0_IRQn);
+    NVIC_EnableIRQ(EINT1_IRQn);
+    NVIC_EnableIRQ(EINT2_IRQn);
+
+    LPC_SC -> EXTMODE |= 7;
+    LPC_SC -> EXTPOLAR &= ~7;
+    LPC_SC -> EXTINT = 7;
+}
+
+void SysTick_Handler(void)
+{
+    t++;
+}
+
+void EINT0_IRQHandler(void)
+{
+    estado = reset;
+    LPC_SC -> EXTINT = (1 << 0);
+}
+
+void EINT1_IRQHandler(void)
+{
+    LPC_SC -> EXTINT = (1 << 1);
+
+    if(estado != pausar)
+    {
+        estado = pausar;
+    }
+    else
+    {
+        t = 0;
+        estado = estadoAnterior; //volver a contar o a contarRapido
+    }
+}
+
+void EINT2_IRQHandler(void)
+{
+    LPC_SC -> EXTINT = (1 << 2);
+
+    if(estado != contarRapido)
+    {
+        t = 0;
+        estado = contarRapido;
+    }
+    else
+    {
+        t = 0;
+        estado = contar;
+    }
+}
+
+int main(void)
+{
+    iniciarGPIO();
+    iniciarSysTick();
+    iniciarEINT();
+
+    while(1)
+    {
+        switch(estado)
+        {
+            case contar:
+            estadoAnterior = contar;
+            if(t >= 1000) //1 seg
+            {
+                LPC_GPIO0 -> FIOCLR = 0xFF;
+                LPC_GPIO0 -> FIOSET = seg[index];
+                t = 0;
+
+                index++;
+                if(index >= 10)
+                {
+                    index = 0;
+                }
+            }
+            break;
+
+            case reset:
+            index = 0;
+            t = 0;
+
+            LPC_GPIO0 -> FIOCLR = 0xFF;
+            LPC_GPIO0 -> FIOSET = seg[0];
+
+            if(LPC_GPIO2 -> FIOPIN & (1 << 10)) //si lo suelto... recordar pull up
+            {
+                estado = estadoAnterior;
+            }
+            break;
+
+            case pausar:
+            break;
+
+            case contarRapido:
+            estadoAnterior = contarRapido;
+            if(t >= 1) //1ms
+            {
+                LPC_GPIO0 -> FIOCLR = 0xFF;
+                LPC_GPIO0 -> FIOSET = seg[index];
+                t = 0;
+
+                index++;
+                if(index >= 10)
+                {
+                    index = 0;
+                }
+            }
+
+            break;
+        }
+    }
+}
