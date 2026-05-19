@@ -1,0 +1,3 @@
+en el lpc1769 el adc puede ser inciado de muchas formas.
+En el archivo de drivers se encuentran formas como interrupciones EINT, capture de timer, match de timer, inicio manual y disparo continuo
+algunas de estas posibilidades requieren configuracion especifica extra de los timers o los EINT que van a causar los disparos
