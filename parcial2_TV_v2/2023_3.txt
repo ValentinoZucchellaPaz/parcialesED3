@@ -1,0 +1,1 @@
+La función del bit BIAS en el conversor digital-analógico (DAC) del LPC1769 es permitir al desarrollador realizar un compromiso (trade-off) entre el consumo de energía y la velocidad de respuesta (settling time) del periférico.

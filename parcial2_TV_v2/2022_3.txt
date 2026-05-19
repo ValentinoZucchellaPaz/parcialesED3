@@ -1,0 +1,12 @@
+tenemos 2 lli. La lli0 es ciclica y lleva datos de datos_1_global hasta el dac con un ancho de 32 bits en scr y dst 
+y con increment en el scr
+La lli1 es similar a la lli0 con la diferencia de que no es ciclica y que su scr es datos_2_global.
+
+el GPDMA se configura en el canal 0 con una configuracion similar a la del lli0 (de hecho lo tiene en su linkedList)
+y se lo declara como una transf. m2p y con una conexion directa al dac. Siendo que este le puede pedir datos directamente al gpdma.
+
+La cantidad de datos que se trensfieren es desconocida pues estan dentro de TOTAL_SAMPLES y no sabemos cuanto vale
+, lo unico que sabemos es que las transferencias son de 32 bits
+
+el tiempo de transferencia de cada dato se basa en la frecuencia del cclk y en la cantidad de tiempo que queramos que se muestre cada dato
+en el dac.
